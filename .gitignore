@@ -1,0 +1,10 @@
+# Build output. Everything here is produced by build.ps1.
+bin/
+
+# The live config, its backup and the activity log live in bin/ and are
+# machine-specific: they name your monitors, your input devices, and record when you
+# used them. Nothing here belongs in a shared repo -- the app generates a fresh config
+# from the local displays on first run.
+*.ini
+*.ini.bak
+*.log

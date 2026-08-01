@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>displayscale settings</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #1c1f23;
+    --muted: #6b7280;
+    --line: #e3e6ea;
+    --accent: #0078d7;
+    --accent-ink: #ffffff;
+    --held: #d99400;
+    --danger: #c0392b;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 12px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181c;
+      --card: #1e2126;
+      --ink: #e8eaed;
+      --muted: #9aa3ad;
+      --line: #2e333a;
+      --accent: #3b9dff;
+      --accent-ink: #0b1520;
+      --held: #f0b429;
+      --danger: #ff6b5b;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 20px 140px;
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.5 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { padding: 34px 0 20px; }
+  h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 13.5px; margin-top: 4px; }
+
+  .status {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 18px; padding: 14px 16px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: var(--shadow);
+  }
+  .pill {
+    font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-ink);
+  }
+  .pill.held { background: var(--held); color: #241a00; }
+  .pill.paused { background: var(--muted); color: var(--card); }
+  .status .mon { color: var(--muted); font-size: 13.5px; }
+  .status .mon b { color: var(--ink); font-weight: 600; }
+  .spacer { flex: 1; }
+
+  section {
+    margin-top: 22px; padding: 20px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: var(--shadow);
+  }
+  h2 { margin: 0 0 4px; font-size: 16px; font-weight: 650; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+
+  .row { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+  .row:first-of-type { border-top: 0; }
+  .row label.name { flex: 1; min-width: 0; }
+  .row .desc { color: var(--muted); font-size: 12.5px; }
+
+  select, input[type=number], input[type=text] {
+    font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 7px; padding: 6px 9px;
+  }
+  input[type=number] { width: 110px; }
+  select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  button {
+    font: inherit; font-weight: 550; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 7px;
+    background: var(--bg); color: var(--ink); padding: 6px 13px;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  button.primary:hover { filter: brightness(1.08); }
+  button.link { border: 0; background: none; color: var(--muted); padding: 4px 6px; }
+  button.link:hover { color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+
+  .matches { list-style: none; margin: 0 0 10px; padding: 0; }
+  .matches li {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; margin-bottom: 6px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 7px;
+  }
+  .matches code { font: 12.5px ui-monospace, "Cascadia Mono", Consolas, monospace; word-break: break-all; }
+  .matches .who { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+
+  .learn {
+    margin-top: 10px; padding: 12px 14px; border-radius: 8px;
+    border: 1px dashed var(--line); background: var(--bg);
+  }
+  .learn.active { border-color: var(--accent); border-style: solid; }
+  .learn .caught { font: 12.5px ui-monospace, Consolas, monospace; word-break: break-all; }
+
+  .profile-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .profile-head h2 { margin: 0; }
+  .profile-head .tag { color: var(--muted); font-size: 12.5px; }
+
+  .savebar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--card); border-top: 1px solid var(--line);
+    padding: 14px 20px;
+  }
+  .savebar .inner { max-width: 860px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .msg { font-size: 13.5px; }
+  .msg.ok { color: var(--accent); }
+  .msg.err { color: var(--danger); }
+  .warn { color: var(--held); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>displayscale</h1>
+    <div class="sub">Display scaling follows whichever keyboard and mouse you're actually using.</div>
+    <div class="status" id="status"><span class="mon">loading…</span></div>
+  </header>
+
+  <div id="profiles"></div>
+
+  <section>
+    <h2>Behaviour</h2>
+    <p class="hint">A switch needs this many events from the new device set inside the window
+      below. Raising it makes accidental switches less likely; lowering it makes real ones faster.</p>
+    <div class="row">
+      <label class="name" for="min_events">Events needed to switch
+        <div class="desc">Bumping the desk mouse once from the couch shouldn't rescale anything.</div>
+      </label>
+      <input type="number" id="min_events" min="1" max="50">
+    </div>
+    <div class="row">
+      <label class="name" for="evidence_window_ms">Evidence window
+        <div class="desc">Milliseconds those events have to arrive within.</div>
+      </label>
+      <input type="number" id="evidence_window_ms" min="100" max="10000" step="100">
+    </div>
+    <div class="row">
+      <label class="name" for="cooldown_ms">Cooldown between switches
+        <div class="desc">A scale change relayouts every open window, so flapping is worse than switching late.</div>
+      </label>
+      <input type="number" id="cooldown_ms" min="0" max="60000" step="500">
+    </div>
+    <div class="row">
+      <label class="name" for="hotkey">Toggle hotkey
+        <div class="desc">Click the box and press the chord. Steps to the next profile and holds it.
+          Type <code>none</code> to disable.</div>
+      </label>
+      <input type="text" id="hotkey" size="22" placeholder="click, then press keys">
+    </div>
+    <div class="row" id="hotkeyWarnRow" style="display:none">
+      <span class="warn" id="hotkeyWarn"></span>
+    </div>
+  </section>
+</div>
+
+<div class="savebar">
+  <div class="inner">
+    <button class="primary" id="save">Save changes</button>
+    <button id="revert">Revert</button>
+    <span class="msg" id="msg"></span>
+    <span class="spacer"></span>
+    <span class="mon" id="idle" style="color:var(--muted);font-size:12.5px"></span>
+  </div>
+</div>
+
+<script>
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+const api = (path, opts) => fetch(path + (path.includes('?') ? '&' : '?') + 't=' + TOKEN,
+  Object.assign({ headers: { 'Content-Type': 'application/json', 'X-Token': TOKEN } }, opts));
+
+let state = null;      // last state from the server
+let draft = null;      // what the form is editing
+let learn = null;      // { profileIndex, baseline, timer }
+
+const $ = id => document.getElementById(id);
+
+function monitorMatches(key, mon) {
+  if (!key) return false;
+  const k = key.toLowerCase();
+  if (mon.gdi && k === mon.gdi.toLowerCase()) return true;
+  return (mon.name || '').toLowerCase().includes(k);
+}
+
+async function load() {
+  const res = await api('/api/state');
+  state = await res.json();
+  draft = JSON.parse(JSON.stringify({ settings: state.settings, profiles: state.profiles }));
+  render();
+}
+
+function renderStatus() {
+  const s = state.status, el = $('status');
+  const bits = [];
+  const cls = s.paused ? 'paused' : (s.held ? 'held' : '');
+  bits.push(`<span class="pill ${cls}">${s.profile || 'waiting for input'}</span>`);
+  if (s.paused) bits.push('<span class="mon">auto-switching paused</span>');
+  else if (s.held) bits.push('<span class="mon">holding your manual choice</span>');
+  for (const m of state.monitors) {
+    bits.push(`<span class="mon">${esc(m.name)} <b>${m.current}%</b></span>`);
+  }
+  bits.push('<span class="spacer"></span>');
+  if (s.hotkeyActive) bits.push(`<span class="mon">hotkey <b>${esc(s.hotkeyActive)}</b></span>`);
+  else bits.push('<span class="warn">hotkey not registered</span>');
+  el.innerHTML = bits.join('');
+}
+
+function render() {
+  renderStatus();
+  $('min_events').value = draft.settings.min_events;
+  $('evidence_window_ms').value = draft.settings.evidence_window_ms;
+  $('cooldown_ms').value = draft.settings.cooldown_ms;
+  $('hotkey').value = draft.settings.hotkey;
+
+  if (!state.status.hotkeyActive && draft.settings.hotkey &&
+      draft.settings.hotkey.toLowerCase() !== 'none') {
+    $('hotkeyWarnRow').style.display = '';
+    $('hotkeyWarn').textContent =
+      'This chord isn’t currently registered — another application probably owns it. Pick another.';
+  } else {
+    $('hotkeyWarnRow').style.display = 'none';
+  }
+
+  const host = $('profiles');
+  host.innerHTML = '';
+  draft.profiles.forEach((p, pi) => host.appendChild(renderProfile(p, pi)));
+}
+
+function renderProfile(p, pi) {
+  const sec = document.createElement('section');
+  const active = state.status.profile &&
+    state.status.profile.toLowerCase() === p.name.toLowerCase();
+
+  const head = document.createElement('div');
+  head.className = 'profile-head';
+  head.innerHTML = `<h2>${esc(p.name)}</h2>` +
+    (active ? '<span class="tag">active now</span>' : '');
+  const apply = document.createElement('button');
+  apply.textContent = 'Apply now';
+  apply.style.marginLeft = 'auto';
+  apply.onclick = async () => {
+    const r = await api('/api/apply', { method: 'POST', body: JSON.stringify({ profile: p.name }) });
+    state = await r.json();
+    renderStatus();
+    render();
+    flash('Applied ' + p.name + '.', true);
+  };
+  head.appendChild(apply);
+  sec.appendChild(head);
+
+  // ---- scales
+  const sh = document.createElement('p');
+  sh.className = 'hint';
+  sh.textContent = 'What each display scales to in this profile.';
+  sec.appendChild(sh);
+
+  for (const mon of state.monitors) {
+    const rule = p.scales.find(s => monitorMatches(s.key, mon));
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const label = document.createElement('label');
+    label.className = 'name';
+    label.innerHTML = `${esc(mon.name)}<div class="desc">currently ${mon.current}%` +
+      `, max ${mon.max}%${mon.max < 300 ? ' — 300% not possible on this panel' : ''}</div>`;
+    row.appendChild(label);
+
+    const sel = document.createElement('select');
+    sel.innerHTML = '<option value="">— leave unchanged —</option>' +
+      mon.available.map(v => `<option value="${v}">${v}%</option>`).join('');
+    sel.value = rule ? String(rule.percent) : '';
+    sel.onchange = () => {
+      const others = p.scales.filter(s => !monitorMatches(s.key, mon));
+      if (sel.value) others.push({ key: rule ? rule.key : mon.name, percent: +sel.value });
+      p.scales = others;
+      dirty();
+    };
+    row.appendChild(sel);
+    sec.appendChild(row);
+  }
+
+  // rules pointing at displays that aren't plugged in right now: keep, don't silently drop
+  const orphans = p.scales.filter(s => !state.monitors.some(m => monitorMatches(s.key, m)));
+  for (const o of orphans) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<label class="name">${esc(o.key)}` +
+      `<div class="desc">not connected right now — kept as-is</div></label>` +
+      `<span class="mon">${o.percent}%</span>`;
+    const rm = document.createElement('button');
+    rm.className = 'link'; rm.textContent = 'remove';
+    rm.onclick = () => { p.scales = p.scales.filter(x => x !== o); render(); dirty(); };
+    row.appendChild(rm);
+    sec.appendChild(row);
+  }
+
+  // ---- match rules
+  const mh = document.createElement('p');
+  mh.className = 'hint';
+  mh.style.marginTop = '18px';
+  mh.textContent = 'Devices that mean you’re in this spot. Matched against the device path, case-insensitive.';
+  sec.appendChild(mh);
+
+  const ul = document.createElement('ul');
+  ul.className = 'matches';
+  p.match.forEach((m, mi) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<code>${esc(m.value)}</code><span class="spacer" style="flex:1"></span>` +
+      `<span class="who">${esc(m.label)}</span>`;
+    const rm = document.createElement('button');
+    rm.className = 'link'; rm.textContent = 'remove';
+    rm.onclick = () => { p.match.splice(mi, 1); render(); dirty(); };
+    li.appendChild(rm);
+    ul.appendChild(li);
+  });
+  if (!p.match.length) {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="who">No devices — this profile can only be reached by hotkey.</span>';
+    ul.appendChild(li);
+  }
+  sec.appendChild(ul);
+
+  const box = document.createElement('div');
+  box.className = 'learn';
+  box.id = 'learn' + pi;
+  const btn = document.createElement('button');
+  btn.textContent = 'Identify a device…';
+  btn.onclick = () => startLearn(pi);
+  box.appendChild(btn);
+  sec.appendChild(box);
+
+  return sec;
+}
+
+async function startLearn(pi) {
+  stopLearn();
+  const box = $('learn' + pi);
+  box.classList.add('active');
+  const baseline = (await (await api('/api/device')).json()).name || '';
+  box.innerHTML = '<b>Press a key or move the pointer on the device you want to add.</b>' +
+    '<div class="caught" id="caught" style="margin-top:8px;color:var(--muted)">waiting…</div>';
+  const cancel = document.createElement('button');
+  cancel.className = 'link'; cancel.textContent = 'cancel';
+  cancel.onclick = () => { stopLearn(); render(); };
+  box.appendChild(cancel);
+
+  learn = {
+    pi, baseline,
+    timer: setInterval(async () => {
+      const d = await (await api('/api/device')).json();
+      if (!d.name || d.name === learn.baseline) return;
+      clearInterval(learn.timer);
+      const caught = $('caught');
+      caught.innerHTML = `<div style="color:var(--ink)"><b>${esc(d.label)}</b></div>` +
+        `<div style="margin:6px 0">${esc(d.name)}</div>` +
+        `<div>will match on <code>${esc(d.suggestion)}</code></div>`;
+      const add = document.createElement('button');
+      add.className = 'primary';
+      add.textContent = 'Add to ' + draft.profiles[learn.pi].name;
+      add.style.marginTop = '10px';
+      add.onclick = () => {
+        const p = draft.profiles[learn.pi];
+        if (!p.match.some(m => m.value === d.suggestion)) {
+          p.match.push({ value: d.suggestion, label: d.label });
+          dirty();
+        }
+        stopLearn();
+        render();
+      };
+      $('learn' + learn.pi).appendChild(add);
+    }, 350)
+  };
+}
+
+function stopLearn() {
+  if (learn && learn.timer) clearInterval(learn.timer);
+  learn = null;
+}
+
+$('hotkey').addEventListener('keydown', e => {
+  e.preventDefault();
+  const k = e.key;
+  if (k === 'Tab') return;
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(k)) return;
+  const parts = [];
+  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.altKey) parts.push('Alt');
+  if (e.shiftKey) parts.push('Shift');
+  if (e.metaKey) parts.push('Win');
+  let key = k.length === 1 ? k.toUpperCase() : k;
+  if (/^F\d{1,2}$/.test(k)) key = k;
+  if (k === ' ') key = 'Space';
+  parts.push(key);
+  e.target.value = parts.join('+');
+  draft.settings.hotkey = e.target.value;
+  dirty();
+});
+
+for (const id of ['min_events', 'evidence_window_ms', 'cooldown_ms']) {
+  $(id).addEventListener('input', e => { draft.settings[id] = +e.target.value; dirty(); });
+}
+
+let isDirty = false;
+function dirty() { isDirty = true; $('msg').textContent = ''; $('msg').className = 'msg'; }
+function flash(text, ok) {
+  const m = $('msg');
+  m.textContent = text;
+  m.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+$('save').onclick = async () => {
+  $('save').disabled = true;
+  try {
+    const r = await api('/api/save', { method: 'POST', body: JSON.stringify(draft) });
+    const out = await r.json();
+    if (out.ok) {
+      state = out.state;
+      draft = JSON.parse(JSON.stringify({ settings: state.settings, profiles: state.profiles }));
+      isDirty = false;
+      render();
+      flash('Saved. Running config updated.', true);
+    } else {
+      flash(out.error || 'Save failed.', false);
+    }
+  } catch (err) {
+    flash('Save failed: ' + err, false);
+  } finally {
+    $('save').disabled = false;
+  }
+};
+
+$('revert').onclick = () => { stopLearn(); load().then(() => flash('Reverted to the saved config.', true)); };
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Keep the status strip live, and keep the idle shutdown at bay while open.
+setInterval(async () => {
+  if (learn) return;
+  try {
+    const r = await api('/api/state');
+    const fresh = await r.json();
+    state.status = fresh.status;
+    state.monitors = fresh.monitors;
+    renderStatus();
+  } catch { $('idle').textContent = 'settings server closed — reopen from the tray'; }
+}, 3000);
+
+window.addEventListener('beforeunload', e => { if (isDirty) e.preventDefault(); });
+
+load();
+</script>
+</body>
+</html>

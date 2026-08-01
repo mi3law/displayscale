@@ -1,0 +1,24 @@
+# Keep line endings deterministic across machines. Git stores text as LF and checks
+# out whatever is native to the platform, so cloning on macOS or Linux does not
+# produce a diff that touches every line of every file.
+* text=auto
+
+# Windows-only entry points, and PowerShell is happiest with CRLF on disk.
+*.ps1   text eol=crlf
+*.cmd   text eol=crlf
+*.bat   text eol=crlf
+
+# Declared explicitly so Git never has to guess at the type.
+*.cs    text
+*.html  text
+*.css   text
+*.js    text
+*.md    text
+*.ini   text
+*.json  text
+
+# Never line-ending-munge these, should any ever land in the tree.
+*.exe   binary
+*.dll   binary
+*.ico   binary
+*.png   binary

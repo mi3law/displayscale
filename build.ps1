@@ -5,8 +5,9 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $csc  = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
-$out  = Join-Path $root 'bin'
-$exe  = Join-Path $out 'displayscale.exe'
+$out    = Join-Path $root 'bin'
+$exe    = Join-Path $out 'displayscale.exe'       # tray app, GUI subsystem
+$cliExe = Join-Path $out 'displayscale-cli.exe'   # same code, console subsystem
 
 if (-not (Test-Path $csc)) { throw "C# compiler not found at $csc" }
 if (-not (Test-Path $out)) { New-Item -ItemType Directory -Path $out | Out-Null }
@@ -36,16 +37,29 @@ $refs = @(
 $html = Join-Path $root 'src\ui\settings.html'
 if (-not (Test-Path $html)) { throw "missing $html" }
 
-& $csc /nologo /target:exe /platform:x64 /optimize+ /warnaserror- `
-    "/out:$exe" $refs "/resource:$html,DisplayScale.settings.html" $sources
+# Two binaries, same sources, differing only in subsystem.
+#
+# The tray app must be /target:winexe. A console-subsystem build has Windows create a
+# console before Main even runs, so every launch flashes a terminal and so does logon;
+# hiding it afterwards is always too late.
+#
+# But a GUI-subsystem process has nowhere to print, and shells do not wait for one, so
+# the CLI verbs get a console-subsystem twin where terminals behave normally.
+$common = @('/nologo', '/platform:x64', '/optimize+', '/warnaserror-')
+$embed  = "/resource:$html,DisplayScale.settings.html"
 
-if ($LASTEXITCODE -ne 0) { throw "build failed ($LASTEXITCODE)" }
+& $csc $common /target:winexe "/out:$exe" $refs $embed $sources
+if ($LASTEXITCODE -ne 0) { throw "build failed for the tray binary ($LASTEXITCODE)" }
+
+& $csc $common /target:exe "/out:$cliExe" $refs $embed $sources
+if ($LASTEXITCODE -ne 0) { throw "build failed for the cli binary ($LASTEXITCODE)" }
 
 # No config is copied here on purpose. The repo ships none, because a config names
 # specific monitors and input devices. On first run the app writes bin\displayscale.ini
 # describing whatever displays this machine actually has.
 
-Write-Host "built   -> $exe"
+Write-Host "built   -> $exe      (tray, no console)"
+Write-Host "built   -> $cliExe  (terminal)"
 
 if ($wasRunning) {
     Start-Process -FilePath $exe -ArgumentList 'run' -WindowStyle Hidden

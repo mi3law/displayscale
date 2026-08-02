@@ -11,64 +11,64 @@ namespace DisplayScale
 {
     internal static class Program
     {
-        [DllImport("kernel32.dll")]
-        static extern IntPtr GetConsoleWindow();
-
-        [DllImport("user32.dll")]
-        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        const int SW_HIDE = 0;
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        static extern uint GetConsoleProcessList(uint[] processList, uint count);
-
         static Mutex _singleInstance;
 
         /// <summary>
-        /// True when this process owns its console, i.e. Windows created one for the
-        /// launch. Run from a terminal, the shell is attached too and the count is
-        /// higher. It is the difference between a double-click (where the user wants
-        /// the app) and typing the bare name (where they want the usage text).
+        /// Two binaries are built from these sources. displayscale.exe targets the
+        /// GUI subsystem, so Windows never creates a console for it and a tray launch
+        /// cannot flash one. displayscale-cli.exe is the same code on the console
+        /// subsystem, where terminals wait for it and output appears in order.
+        ///
+        /// Attaching a GUI process to the parent's console was the tempting
+        /// alternative, but it makes output arrive after the shell prompt has already
+        /// returned, and behaves differently depending on how the process was
+        /// started. Two binaries are duller and predictable.
         /// </summary>
-        static bool LaunchedFromExplorer()
+        static bool IsCliBuild()
         {
-            try
-            {
-                var attached = new uint[4];
-                uint count = GetConsoleProcessList(attached, (uint)attached.Length);
-                return count <= 1;
-            }
-            catch { return false; }
+            string name = Path.GetFileNameWithoutExtension(Assembly.GetExecutingAssembly().Location);
+            return name != null && name.EndsWith("-cli", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>The tray binary, whichever build is doing the asking.</summary>
+        static string TrayExePath()
+        {
+            string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            return Path.Combine(dir, "displayscale.exe");
         }
 
         [STAThread]
         static int Main(string[] args)
         {
+            // No arguments means "run" when double-clicked, and "help" in a terminal.
             string verb = args.Length > 0
                 ? args[0].ToLowerInvariant()
-                : (LaunchedFromExplorer() ? "run" : "help");
+                : (IsCliBuild() ? "help" : "run");
 
+            int exitCode;
             try
             {
                 switch (verb)
                 {
-                    case "monitors": return CmdMonitors();
-                    case "devices": return CmdDevices();
-                    case "watch": return CmdWatch();
-                    case "set": return CmdSet(args);
-                    case "run": return CmdRun(args);
+                    case "monitors": exitCode = CmdMonitors(); break;
+                    case "devices": exitCode = CmdDevices(); break;
+                    case "watch": exitCode = CmdWatch(); break;
+                    case "set": exitCode = CmdSet(args); break;
+                    case "run": exitCode = CmdRun(args); break;
                     case "config":
-                    case "settings": return CmdConfig();
-                    case "install": return CmdInstall();
-                    case "uninstall": return CmdUninstall();
-                    default: return CmdHelp();
+                    case "settings": exitCode = CmdConfig(); break;
+                    case "install": exitCode = CmdInstall(); break;
+                    case "uninstall": exitCode = CmdUninstall(); break;
+                    default: exitCode = CmdHelp(); break;
                 }
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine("error: " + ex.Message);
-                return 1;
+                exitCode = 1;
             }
+
+            return exitCode;
         }
 
         static int CmdHelp()
@@ -219,9 +219,6 @@ Config lives next to the exe in displayscale.ini.");
                 return 0;
             }
 
-            IntPtr console = GetConsoleWindow();
-            if (console != IntPtr.Zero) ShowWindow(console, SW_HIDE);
-
             string configPath = Config.DefaultPath();
             var cfg = Config.Load(configPath);
 
@@ -250,7 +247,7 @@ Config lives next to the exe in displayscale.ini.");
             if (!SignalOpenSettings())
             {
                 Console.WriteLine("Starting displayscale…");
-                var psi = new ProcessStartInfo(Assembly.GetExecutingAssembly().Location, "run");
+                var psi = new ProcessStartInfo(TrayExePath(), "run");
                 psi.UseShellExecute = false;
                 psi.WindowStyle = ProcessWindowStyle.Hidden;
                 Process.Start(psi);
@@ -306,7 +303,8 @@ Config lives next to the exe in displayscale.ini.");
 
         static int CmdInstall()
         {
-            string exePath = Assembly.GetExecutingAssembly().Location;
+            // Always the tray binary, even when installed from the CLI one.
+            string exePath = TrayExePath();
             string lnk = ShortcutPath();
 
             // Late-bound WScript.Shell keeps this free of an interop assembly reference.

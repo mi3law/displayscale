@@ -169,13 +169,36 @@ Change it with `hotkey =` in the ini, or `hotkey = none` to disable. If the chor
 already taken, you get a tray balloon and a line in the log rather than a hotkey that
 silently does nothing.
 
+## Two binaries
+
+`build.ps1` produces two executables from the same sources, differing only in
+subsystem:
+
+| | |
+|---|---|
+| `displayscale.exe` | the tray app. Double-click it, or let the Startup entry launch it |
+| `displayscale-cli.exe` | the same code for terminal use |
+
+The tray app has to be a GUI-subsystem binary. On the console subsystem Windows
+creates a console *before* `Main` runs, so a terminal flashes on every launch and
+again at logon — hiding it from inside the program is always too late.
+
+But a GUI-subsystem process has nowhere to print, and shells don't wait for one, so
+the CLI verbs get a console-subsystem twin where terminals behave normally. Attaching
+the GUI binary to the parent's console was the tempting single-binary alternative,
+but output then lands after the shell prompt has already returned, and it behaves
+differently depending on how the process was started. Two binaries are duller and
+predictable.
+
+Double-clicking `displayscale.exe` starts the watcher; running `displayscale-cli.exe`
+with no arguments prints usage. Launching either twice never starts a second watcher —
+a mutex catches it, and the second launch opens the settings of the one already
+running.
+
 ## Commands
 
-Double-clicking `displayscale.exe` starts the tray watcher — the app knows it was
-launched from Explorer because it owns its console, where a terminal launch shares
-one. Running it from a terminal with no arguments prints usage instead. Launching it
-twice never starts a second watcher; the second launch opens the settings of the one
-already running.
+Use `displayscale-cli.exe` for these in a terminal. The tray binary accepts them too,
+but won't print anywhere useful.
 
 | | |
 |---|---|

@@ -23,7 +23,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 Then set it up for your own hardware:
 
 ```bash
-bin\displayscale.exe config
+bin\displayscale-cli.exe config
 ```
 
 That starts the watcher and opens a settings page in your browser. There's no config
@@ -46,7 +46,7 @@ Test it by using each set of devices in turn; `bin\displayscale.log` records eve
 decision. Once you're happy:
 
 ```bash
-bin\displayscale.exe install
+bin\displayscale-cli.exe install
 ```
 
 That adds a shortcut to your Startup folder — no admin, no scheduled task, and
@@ -220,7 +220,7 @@ hotkey.
 Tray → **Settings…**, or:
 
 ```bash
-bin\displayscale.exe config
+bin\displayscale-cli.exe config
 ```
 
 That opens a settings page in Chrome. There's no extra component behind it: the tray
@@ -253,15 +253,20 @@ open door.
 | | |
 |---|---|
 | `src/` | the source |
+| `displayscale.lnk` | double-click this to start the app, so you never have to go into `bin/`. Recreated by every build |
 | `bin/` | build output — short for *binary*, the conventional name. Created by `build.ps1`; safe to delete and rebuild |
-| `bin/displayscale.exe` | the program |
+| `bin/displayscale.exe` | the tray app (no console) |
+| `bin/displayscale-cli.exe` | the terminal build |
 | `bin/displayscale.ini` | **the live config** — what the app reads and the settings page writes |
 | `bin/displayscale.ini.bak` | previous version, kept on each save |
 | `bin/displayscale.log` | activity log, truncated past 512 KB |
-| `displayscale.default.ini` | a **seed**, not the live config. `build.ps1` copies it into `bin/` only when there's no config there yet, so a fresh clone starts working without hand-writing one |
 
-The seed is never read at runtime and never overwrites your live config. If you delete
-`bin/` and rebuild, you get the seed's defaults back.
+None of that is in the repo. Everything under `bin/` is built, and both the config and
+the log are specific to your machine — they name your monitors and input devices and
+record when you used them. `displayscale.lnk` is excluded too, since a shortcut stores
+an absolute path and one made on your machine is broken on anyone else's.
+
+Delete `bin/`, rebuild, and you get a fresh config generated from your own displays.
 
 ## Config
 

@@ -61,6 +61,24 @@ if ($LASTEXITCODE -ne 0) { throw "build failed for the cli binary ($LASTEXITCODE
 Write-Host "built   -> $exe      (tray, no console)"
 Write-Host "built   -> $cliExe  (terminal)"
 
+# A double-clickable entry point at the top level, so starting the app does not mean
+# navigating into bin\. Rewritten every build: a shortcut stores an absolute path, so
+# this is also what fixes it after the project folder moves.
+$shortcut = Join-Path $root 'displayscale.lnk'
+try {
+    $shell = New-Object -ComObject WScript.Shell
+    $link = $shell.CreateShortcut($shortcut)
+    $link.TargetPath       = $exe
+    $link.Arguments        = 'run'
+    $link.WorkingDirectory = $out
+    $link.Description      = 'Start displayscale - display scaling that follows your input device'
+    $link.IconLocation     = "$exe,0"
+    $link.Save()
+    Write-Host "shortcut-> $shortcut"
+} catch {
+    Write-Warning "could not create $shortcut : $_"
+}
+
 if ($wasRunning) {
     Start-Process -FilePath $exe -ArgumentList 'run' -WindowStyle Hidden
     Write-Host "restarted the tray watcher"

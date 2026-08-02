@@ -8,3 +8,7 @@ bin/
 *.ini
 *.ini.bak
 *.log
+
+# Shortcuts store an absolute path, so one built on your machine is broken on
+# anyone else's. build.ps1 creates displayscale.lnk pointing at the local build.
+*.lnk

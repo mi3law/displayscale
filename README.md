@@ -171,6 +171,12 @@ silently does nothing.
 
 ## Commands
 
+Double-clicking `displayscale.exe` starts the tray watcher — the app knows it was
+launched from Explorer because it owns its console, where a terminal launch shares
+one. Running it from a terminal with no arguments prints usage instead. Launching it
+twice never starts a second watcher; the second launch opens the settings of the one
+already running.
+
 | | |
 |---|---|
 | `displayscale monitors` | displays, current scale, and every scale each one allows |

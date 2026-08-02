@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace DisplayScale
@@ -18,10 +19,34 @@ namespace DisplayScale
 
         const int SW_HIDE = 0;
 
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern uint GetConsoleProcessList(uint[] processList, uint count);
+
+        static Mutex _singleInstance;
+
+        /// <summary>
+        /// True when this process owns its console, i.e. Windows created one for the
+        /// launch. Run from a terminal, the shell is attached too and the count is
+        /// higher. It is the difference between a double-click (where the user wants
+        /// the app) and typing the bare name (where they want the usage text).
+        /// </summary>
+        static bool LaunchedFromExplorer()
+        {
+            try
+            {
+                var attached = new uint[4];
+                uint count = GetConsoleProcessList(attached, (uint)attached.Length);
+                return count <= 1;
+            }
+            catch { return false; }
+        }
+
         [STAThread]
         static int Main(string[] args)
         {
-            string verb = args.Length > 0 ? args[0].ToLowerInvariant() : "help";
+            string verb = args.Length > 0
+                ? args[0].ToLowerInvariant()
+                : (LaunchedFromExplorer() ? "run" : "help");
 
             try
             {
@@ -49,6 +74,8 @@ namespace DisplayScale
         static int CmdHelp()
         {
             Console.WriteLine(@"displayscale - switch monitor scaling based on which input device you're using
+
+  Double-clicking the exe starts the tray watcher. These verbs are for a terminal.
 
   displayscale monitors        list displays, current scale, and every scale they allow
   displayscale devices         list all keyboards and mice Windows can see
@@ -180,6 +207,18 @@ Config lives next to the exe in displayscale.ini.");
 
         static int CmdRun(string[] args)
         {
+            bool isFirstInstance;
+            _singleInstance = new Mutex(true, @"Local\displayscale.instance", out isFirstInstance);
+            if (!isFirstInstance)
+            {
+                // Two watchers would fight over the hotkey and the display scale.
+                // Now that double-clicking launches the app, that is easy to do by
+                // accident, so surface the instance already running instead.
+                Console.WriteLine("displayscale is already running; opening its settings.");
+                SignalOpenSettings();
+                return 0;
+            }
+
             IntPtr console = GetConsoleWindow();
             if (console != IntPtr.Zero) ShowWindow(console, SW_HIDE);
 
@@ -208,31 +247,38 @@ Config lives next to the exe in displayscale.ini.");
 
         static int CmdConfig()
         {
-            string exePath = Assembly.GetExecutingAssembly().Location;
+            if (!SignalOpenSettings())
+            {
+                Console.WriteLine("Starting displayscale…");
+                var psi = new ProcessStartInfo(Assembly.GetExecutingAssembly().Location, "run");
+                psi.UseShellExecute = false;
+                psi.WindowStyle = ProcessWindowStyle.Hidden;
+                Process.Start(psi);
+                Thread.Sleep(2000);
+
+                if (!SignalOpenSettings())
+                {
+                    Console.Error.WriteLine("Could not reach displayscale to open its settings.");
+                    return 1;
+                }
+            }
+
+            Console.WriteLine("Opening the settings page in your browser.");
+            return 0;
+        }
+
+        /// <summary>
+        /// Ask an already-running instance to open its settings page. Returns false
+        /// when there is nothing running to ask.
+        /// </summary>
+        static bool SignalOpenSettings()
+        {
             int self = Process.GetCurrentProcess().Id;
 
             var others = new List<Process>();
             foreach (var p in Process.GetProcessesByName("displayscale"))
                 if (p.Id != self) others.Add(p);
-
-            if (others.Count == 0)
-            {
-                Console.WriteLine("Starting displayscale…");
-                var psi = new ProcessStartInfo(exePath, "run");
-                psi.UseShellExecute = false;
-                psi.WindowStyle = ProcessWindowStyle.Hidden;
-                Process.Start(psi);
-                System.Threading.Thread.Sleep(2000);
-
-                foreach (var p in Process.GetProcessesByName("displayscale"))
-                    if (p.Id != self) others.Add(p);
-            }
-
-            if (others.Count == 0)
-            {
-                Console.Error.WriteLine("Could not start displayscale.");
-                return 1;
-            }
+            if (others.Count == 0) return false;
 
             // HWND_BROADCAST looks tidier but UIPI filters it (PostMessage reports
             // success while setting ERROR_ACCESS_DENIED), so target the windows
@@ -250,8 +296,7 @@ Config lives next to the exe in displayscale.ini.");
             foreach (IntPtr hWnd in targets)
                 PostMessage(hWnd, RawInputWatcher.OpenSettingsMessage, IntPtr.Zero, IntPtr.Zero);
 
-            Console.WriteLine("Opening the settings page in your browser.");
-            return 0;
+            return targets.Count > 0;
         }
 
         static string ShortcutPath()
